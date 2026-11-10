@@ -99,7 +99,8 @@ fun ClipToolBar(
             Icons.Filled.Timer,
             stringResource(if (isVideo) R.string.tool_trim else R.string.tool_duration),
             activeTool == Tool.TRIM,
-        , onClick = { onTool(Tool.TRIM) })
+            onClick = { onTool(Tool.TRIM) },
+        )
         ToolButton(Icons.Filled.ContentCut, stringResource(R.string.tool_split), false, actions.onSplit)
         if (isVideo) {
             ToolButton(Icons.Filled.Speed, stringResource(R.string.tool_speed), activeTool == Tool.SPEED, onClick = { onTool(Tool.SPEED) })
