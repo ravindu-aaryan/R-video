@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Video Maker</string>
+
+    <!-- Top bar & general -->
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="export">Export</string>
+    <string name="close">Close</string>
+    <string name="cancel">Cancel</string>
+    <string name="ok">OK</string>
+    <string name="done">Done</string>
+    <string name="share">Share</string>
+    <string name="remove">Remove</string>
+    <string name="replace">Replace</string>
+    <string name="reset">Reset</string>
+    <string name="apply_to_all">Apply to all clips</string>
+
+    <!-- Empty state -->
+    <string name="empty_title">Start a new video</string>
+    <string name="empty_body">Add videos and photos, then trim, add filters, text, music and overlays. Your edits show up in the preview straight away.</string>
+    <string name="add_media">Add videos &amp; photos</string>
+
+    <!-- Playback & timeline -->
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="clip_description">Clip %1$d, %2$s</string>
+
+    <!-- Tool bar -->
+    <string name="tool_add">Add</string>
+    <string name="tool_text">Text</string>
+    <string name="tool_music">Music</string>
+    <string name="tool_overlay">Overlay</string>
+    <string name="tool_transitions">Fades</string>
+    <string name="tool_format">Format</string>
+    <string name="tool_done">Done</string>
+    <string name="tool_trim">Trim</string>
+    <string name="tool_duration">Duration</string>
+    <string name="tool_split">Split</string>
+    <string name="tool_speed">Speed</string>
+    <string name="tool_volume">Volume</string>
+    <string name="tool_filters">Filters</string>
+    <string name="tool_adjust">Adjust</string>
+    <string name="tool_rotate">Rotate</string>
+    <string name="tool_fit">Fit</string>
+    <string name="tool_move_left">Move left</string>
+    <string name="tool_move_right">Move right</string>
+    <string name="tool_duplicate">Duplicate</string>
+    <string name="tool_delete">Delete</string>
+
+    <!-- Clip panels -->
+    <string name="trim">Trim</string>
+    <string name="start_here">Start at playhead</string>
+    <string name="end_here">End at playhead</string>
+    <string name="trim_hint">Tip: play or scrub to the exact moment, then tap Start or End at playhead.</string>
+    <string name="show_for">Show for</string>
+    <string name="speed_result">Clip length at this speed: %1$s</string>
+    <string name="volume">Volume</string>
+    <string name="mute">Mute</string>
+    <string name="unmute">Unmute</string>
+    <string name="strength">Strength</string>
+    <string name="brightness">Brightness</string>
+    <string name="contrast">Contrast</string>
+    <string name="saturation">Saturation</string>
+    <string name="warmth">Warmth</string>
+    <string name="rotate_90">Rotate 90°</string>
+    <string name="flip_horizontal">Flip horizontal</string>
+    <string name="flip_vertical">Flip vertical</string>
+    <string name="fit_hint">Shows the whole clip, with black bars if its shape differs from the frame.</string>
+    <string name="fill_hint">Fills the frame, cropping the edges of the clip.</string>
+    <string name="blur_hint">Shows the whole clip over a blurred copy of itself — great for vertical videos.</string>
+    <string name="slow_zoom">Slow zoom</string>
+    <string name="slow_zoom_hint">Gently zooms in while the photo is on screen.</string>
+
+    <!-- Overlay -->
+    <string name="overlay_empty">Layer a second video or an image (like a logo) on top, with adjustable transparency.</string>
+    <string name="choose_overlay">Choose overlay</string>
+    <string name="opacity">Opacity</string>
+    <string name="size">Size</string>
+    <string name="horizontal">Horizontal</string>
+    <string name="vertical">Vertical</string>
+    <string name="starts_at">Starts at</string>
+    <string name="overlay_sound">Include overlay sound</string>
+
+    <!-- Text -->
+    <string name="add_text">Add text</string>
+    <string name="text_empty">Add titles or captions. They appear at the playhead for 3 seconds; adjust the time below.</string>
+    <string name="text_pick">Tap a text above to edit it.</string>
+    <string name="text_label">Text</string>
+    <string name="bold">Bold</string>
+    <string name="show_between">Show from – to</string>
+    <string name="whole_video">Whole video</string>
+    <string name="delete_text">Delete text</string>
+    <string name="color_swatch">Colour #%1$s</string>
+
+    <!-- Music -->
+    <string name="music_empty">Add background music or a voice-over from your files.</string>
+    <string name="add_music">Add music</string>
+    <string name="music_start">Start song from</string>
+    <string name="loop_music">Loop to fit video</string>
+
+    <!-- Fades -->
+    <string name="fade_between">Fade between clips</string>
+    <string name="fade_between_hint">A smooth dip to black at every cut.</string>
+    <string name="fade_in_start">Fade in at the start</string>
+    <string name="fade_out_end">Fade out at the end</string>
+    <string name="fade_length">Fade length</string>
+    <string name="fade_audio">Fade sound in &amp; out</string>
+    <string name="fade_audio_hint">Eases all sound in at the start and out at the end.</string>
+
+    <!-- Format -->
+    <string name="aspect_ratio">Frame shape</string>
+    <string name="resolution">Quality</string>
+    <string name="keep_original_sound">Keep original sound</string>
+    <string name="keep_original_sound_hint">Turn off to use only music.</string>
+
+    <!-- Export -->
+    <string name="exporting">Creating your video…</string>
+    <string name="exporting_progress">%1$d%%</string>
+    <string name="export_keep_open">Keep the app open until it finishes.</string>
+    <string name="export_done">Saved to Movies/VideoMaker</string>
+    <string name="export_failed">Couldn\'t create the video</string>
+</resources>
