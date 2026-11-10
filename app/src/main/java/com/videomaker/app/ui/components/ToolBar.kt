@@ -72,11 +72,11 @@ fun ProjectToolBar(
 ) {
     ToolRow(modifier) {
         ToolButton(Icons.Filled.AddPhotoAlternate, stringResource(R.string.tool_add), false, onAddMedia)
-        ToolButton(Icons.Filled.TextFields, stringResource(R.string.tool_text), activeTool == Tool.TEXT) { onTool(Tool.TEXT) }
-        ToolButton(Icons.Filled.LibraryMusic, stringResource(R.string.tool_music), activeTool == Tool.MUSIC) { onTool(Tool.MUSIC) }
-        ToolButton(Icons.Filled.Layers, stringResource(R.string.tool_overlay), activeTool == Tool.OVERLAY) { onTool(Tool.OVERLAY) }
-        ToolButton(Icons.Filled.Gradient, stringResource(R.string.tool_transitions), activeTool == Tool.TRANSITIONS) { onTool(Tool.TRANSITIONS) }
-        ToolButton(Icons.Filled.AspectRatio, stringResource(R.string.tool_format), activeTool == Tool.FORMAT) { onTool(Tool.FORMAT) }
+        ToolButton(Icons.Filled.TextFields, stringResource(R.string.tool_text), activeTool == Tool.TEXT, onClick = { onTool(Tool.TEXT) })
+        ToolButton(Icons.Filled.LibraryMusic, stringResource(R.string.tool_music), activeTool == Tool.MUSIC, onClick = { onTool(Tool.MUSIC) })
+        ToolButton(Icons.Filled.Layers, stringResource(R.string.tool_overlay), activeTool == Tool.OVERLAY, onClick = { onTool(Tool.OVERLAY) })
+        ToolButton(Icons.Filled.Gradient, stringResource(R.string.tool_transitions), activeTool == Tool.TRANSITIONS, onClick = { onTool(Tool.TRANSITIONS) })
+        ToolButton(Icons.Filled.AspectRatio, stringResource(R.string.tool_format), activeTool == Tool.FORMAT, onClick = { onTool(Tool.FORMAT) })
     }
 }
 
@@ -99,18 +99,18 @@ fun ClipToolBar(
             Icons.Filled.Timer,
             stringResource(if (isVideo) R.string.tool_trim else R.string.tool_duration),
             activeTool == Tool.TRIM,
-        ) { onTool(Tool.TRIM) }
+        , onClick = { onTool(Tool.TRIM) })
         ToolButton(Icons.Filled.ContentCut, stringResource(R.string.tool_split), false, actions.onSplit)
         if (isVideo) {
-            ToolButton(Icons.Filled.Speed, stringResource(R.string.tool_speed), activeTool == Tool.SPEED) { onTool(Tool.SPEED) }
+            ToolButton(Icons.Filled.Speed, stringResource(R.string.tool_speed), activeTool == Tool.SPEED, onClick = { onTool(Tool.SPEED) })
             if (clip.hasAudio) {
-                ToolButton(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.tool_volume), activeTool == Tool.VOLUME) { onTool(Tool.VOLUME) }
+                ToolButton(Icons.AutoMirrored.Filled.VolumeUp, stringResource(R.string.tool_volume), activeTool == Tool.VOLUME, onClick = { onTool(Tool.VOLUME) })
             }
         }
-        ToolButton(Icons.Filled.PhotoFilter, stringResource(R.string.tool_filters), activeTool == Tool.FILTERS) { onTool(Tool.FILTERS) }
-        ToolButton(Icons.Filled.Tune, stringResource(R.string.tool_adjust), activeTool == Tool.ADJUST) { onTool(Tool.ADJUST) }
-        ToolButton(Icons.Filled.Flip, stringResource(R.string.tool_rotate), activeTool == Tool.ROTATE) { onTool(Tool.ROTATE) }
-        ToolButton(Icons.Filled.CropFree, stringResource(R.string.tool_fit), activeTool == Tool.FIT) { onTool(Tool.FIT) }
+        ToolButton(Icons.Filled.PhotoFilter, stringResource(R.string.tool_filters), activeTool == Tool.FILTERS, onClick = { onTool(Tool.FILTERS) })
+        ToolButton(Icons.Filled.Tune, stringResource(R.string.tool_adjust), activeTool == Tool.ADJUST, onClick = { onTool(Tool.ADJUST) })
+        ToolButton(Icons.Filled.Flip, stringResource(R.string.tool_rotate), activeTool == Tool.ROTATE, onClick = { onTool(Tool.ROTATE) })
+        ToolButton(Icons.Filled.CropFree, stringResource(R.string.tool_fit), activeTool == Tool.FIT, onClick = { onTool(Tool.FIT) })
         ToolButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, stringResource(R.string.tool_move_left), false, actions.onMoveLeft, enabled = !isFirst)
         ToolButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, stringResource(R.string.tool_move_right), false, actions.onMoveRight, enabled = !isLast)
         ToolButton(Icons.Filled.ContentCopy, stringResource(R.string.tool_duplicate), false, actions.onDuplicate)
