@@ -26,6 +26,7 @@ import com.videomaker.app.model.OverlayLayer
 import com.videomaker.app.model.PlaybackState
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.Tool
+import com.videomaker.app.model.TransitionType
 import com.videomaker.app.model.Transitions
 import com.videomaker.app.model.UiMessage
 import kotlinx.coroutines.CancellationException
@@ -115,6 +116,7 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 
     init {
         preview.onError = { msg -> _uiState.update { it.copy(previewError = msg) } }
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) { inspector.clearImportedCopies() }
 
         // Rebuild the preview shortly after the user stops changing things.
         viewModelScope.launch {
@@ -223,6 +225,24 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         edit("$key:$id") { doc -> doc.copy(clips = doc.clips.map { if (it.id == id) transform(it) else it }) }
     }
 
+    /** Uses the selected clip's transition on every cut. */
+    fun applyTransitionToAll() {
+        val source = _uiState.value.selectedClip ?: return
+        edit { doc ->
+            doc.copy(clips = doc.clips.map { it.copy(transition = source.transition, transitionUs = source.transitionUs) })
+        }
+        showMessage("Transition applied to every cut", canUndo = true)
+    }
+
+    /** Gives every cut a different transition. */
+    fun shuffleTransitions() {
+        val choices = TransitionType.entries.filter { it != TransitionType.NONE }
+        edit { doc ->
+            doc.copy(clips = doc.clips.mapIndexed { i, clip -> clip.copy(transition = choices[(i * 3 + 1) % choices.size]) })
+        }
+        showMessage("Transitions mixed across all cuts", canUndo = true)
+    }
+
     /** Copies the selected clip's look (filter + adjustments) to every clip. */
     fun applyLookToAll() {
         val source = _uiState.value.selectedClip ?: return
@@ -280,10 +300,14 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
         if (clip.type == ClipType.VIDEO) {
             val sourceSplit = clip.trimStartUs + (offsetUs * clip.speed).toLong()
             first = clip.copy(trimEndUs = sourceSplit)
-            second = clip.copy(id = Ids.next(), trimStartUs = sourceSplit)
+            second = clip.copy(id = Ids.next(), trimStartUs = sourceSplit, transition = TransitionType.NONE)
         } else {
             first = clip.copy(imageDurationUs = offsetUs)
-            second = clip.copy(id = Ids.next(), imageDurationUs = clip.imageDurationUs - offsetUs)
+            second = clip.copy(
+                id = Ids.next(),
+                imageDurationUs = clip.imageDurationUs - offsetUs,
+                transition = TransitionType.NONE,
+            )
         }
         edit { d ->
             val list = d.clips.toMutableList()
@@ -456,4 +480,5 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
 val Tool.isClipTool: Boolean
     get() = this in setOf(
         Tool.TRIM, Tool.SPEED, Tool.VOLUME, Tool.FILTERS, Tool.ADJUST, Tool.ROTATE, Tool.FIT,
+        Tool.TRANSITION, Tool.EFFECTS,
     )

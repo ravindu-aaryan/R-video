@@ -19,6 +19,35 @@ enum class FitMode(val label: String) {
     BLUR("Blur background"),
 }
 
+/** How a clip enters, replacing the clip before it. */
+enum class TransitionType(val label: String, val overlaps: Boolean) {
+    NONE("None", false),
+    FADE("Crossfade", true),
+    DIP_BLACK("Dip to black", false),
+    SLIDE_LEFT("Slide left", true),
+    SLIDE_RIGHT("Slide right", true),
+    SLIDE_UP("Slide up", true),
+    SLIDE_DOWN("Slide down", true),
+    ZOOM("Zoom", true),
+    SPIN("Spin", true),
+}
+
+/** A visual effect applied to a whole clip. */
+enum class ClipEffect(val label: String) {
+    NONE("None"),
+    GLITCH("Glitch"),
+    RGB_SPLIT("RGB split"),
+    VHS("VHS"),
+    SHAKE("Shake"),
+    PULSE("Beat zoom"),
+    FLASH("Flash"),
+    VIGNETTE("Vignette"),
+    BLUR("Blur"),
+    PIXELATE("Pixelate"),
+    MIRROR("Mirror"),
+    WAVE("Wave"),
+}
+
 /** Brightness, contrast, saturation and warmth, each from -1 to 1 (0 = unchanged). */
 @Immutable
 data class ColorAdjust(
@@ -61,8 +90,18 @@ data class MediaClip(
     val flipHorizontal: Boolean = false,
     val flipVertical: Boolean = false,
     val fit: FitMode = FitMode.FIT,
-    /** Slow "Ken Burns" zoom for photos. */
+    /** Extra zoom (1 = none) and position shift (-1..1) inside the frame. */
+    val zoom: Float = 1f,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f,
+    /** Slow "Ken Burns" zoom while the clip plays. */
     val slowZoom: Boolean = false,
+    // Reel tools
+    /** How this clip enters from the previous one (ignored for the first clip). */
+    val transition: TransitionType = TransitionType.NONE,
+    val transitionUs: Long = 500_000L,
+    val effect: ClipEffect = ClipEffect.NONE,
+    val effectStrength: Float = 0.6f,
 ) {
     /** How long this clip lasts in the final video (after trimming and speed). */
     val timelineDurationUs: Long
@@ -105,6 +144,9 @@ data class OverlayLayer(
 
 enum class TextStyle(val label: String) { PLAIN("Plain"), SHADOW("Shadow"), BOX("Box") }
 
+/** How a caption appears and disappears. */
+enum class TextAnimation(val label: String) { NONE("None"), FADE("Fade"), SLIDE("Slide up"), POP("Pop") }
+
 /** A caption or title drawn on top of everything for a time range. */
 @Immutable
 data class TextItem(
@@ -115,6 +157,7 @@ data class TextItem(
     val sizeFraction: Float = 0.08f,
     val bold: Boolean = true,
     val style: TextStyle = TextStyle.SHADOW,
+    val animation: TextAnimation = TextAnimation.FADE,
     val positionX: Float = 0f,
     val positionY: Float = -0.8f,
     val startUs: Long = 0L,
@@ -135,8 +178,6 @@ data class AudioLayer(
 
 @Immutable
 data class Transitions(
-    /** Dip to black between consecutive clips. */
-    val fadeBetweenClips: Boolean = false,
     val durationUs: Long = 500_000L,
     val fadeInAtStart: Boolean = false,
     val fadeOutAtEnd: Boolean = false,
@@ -159,7 +200,7 @@ enum class Resolution(val label: String, val shortSide: Int) {
 @Immutable
 data class OutputSettings(
     val aspectRatio: AspectRatio = AspectRatio.LANDSCAPE,
-    val resolution: Resolution = Resolution.HD,
+    val resolution: Resolution = Resolution.FULL_HD,
     val keepOriginalAudio: Boolean = true,
 ) {
     /** Output frame size in pixels; always even so every encoder accepts it. */
@@ -184,23 +225,46 @@ data class EditorDocument(
     val transitions: Transitions = Transitions(),
     val output: OutputSettings = OutputSettings(),
 ) {
-    val totalDurationUs: Long get() = clips.sumOf { it.timelineDurationUs }
+    /**
+     * How long each clip overlaps the one before it (0 for the first clip and for cuts without an
+     * overlapping transition). Capped so a clip's entry and exit transitions never collide.
+     */
+    fun overlapsUs(): List<Long> = clips.mapIndexed { index, clip ->
+        if (index == 0 || !clip.transition.overlaps) {
+            0L
+        } else {
+            val previous = clips[index - 1]
+            minOf(
+                clip.transitionUs,
+                (previous.timelineDurationUs * 0.45f).toLong(),
+                (clip.timelineDurationUs * 0.45f).toLong(),
+            ).coerceAtLeast(0L)
+        }
+    }
 
     /** Start time of each clip on the timeline, in the same order as [clips]. */
     fun clipStartsUs(): List<Long> {
-        var t = 0L
-        return clips.map { clip -> t.also { t += clip.timelineDurationUs } }
+        val overlaps = overlapsUs()
+        var end = 0L
+        return clips.mapIndexed { index, clip ->
+            val start = end - overlaps[index]
+            end = start + clip.timelineDurationUs
+            start
+        }
     }
 
-    /** The clip under timeline position [positionUs], with its start time. */
-    fun clipAt(positionUs: Long): Pair<MediaClip, Long>? {
-        var start = 0L
-        for (clip in clips) {
-            val end = start + clip.timelineDurationUs
-            if (positionUs < end) return clip to start
-            start = end
+    val totalDurationUs: Long
+        get() {
+            val last = clips.lastOrNull() ?: return 0L
+            return clipStartsUs().last() + last.timelineDurationUs
         }
-        return clips.lastOrNull()?.let { it to (start - it.timelineDurationUs) }
+
+    /** The clip under timeline position [positionUs] (the incoming one during a transition), with its start. */
+    fun clipAt(positionUs: Long): Pair<MediaClip, Long>? {
+        if (clips.isEmpty()) return null
+        val starts = clipStartsUs()
+        val index = starts.indexOfLast { it <= positionUs }.coerceAtLeast(0)
+        return clips[index] to starts[index]
     }
 }
 
@@ -216,7 +280,7 @@ enum class Tool {
     // Project tools (no clip selected)
     OVERLAY, TEXT, MUSIC, TRANSITIONS, FORMAT,
     // Clip tools
-    TRIM, SPEED, VOLUME, FILTERS, ADJUST, ROTATE, FIT,
+    TRIM, SPEED, VOLUME, FILTERS, ADJUST, ROTATE, FIT, TRANSITION, EFFECTS,
 }
 
 @Immutable

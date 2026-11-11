@@ -3,7 +3,10 @@ package com.videomaker.app.media
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.media.ExifInterface
+import android.graphics.ColorSpace
+import android.graphics.ImageDecoder
+import android.os.Build
+import java.io.File
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -22,7 +25,7 @@ class MediaInspector(private val context: Context) {
         val mimeType = context.contentResolver.getType(uri) ?: return@withContext null
         val name = displayName(uri)
         when {
-            mimeType.startsWith("image/") -> inspectImage(uri, mimeType, name)
+            mimeType.startsWith("image/") -> inspectImage(uri, name)
             mimeType.startsWith("video/") -> inspectVideo(uri, mimeType, name)
             else -> null
         }
@@ -93,39 +96,63 @@ class MediaInspector(private val context: Context) {
         }
     }.getOrNull()
 
-    private fun inspectImage(uri: Uri, mimeType: String, name: String): MediaClip? = runCatching {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
-        val orientation = context.contentResolver.openInputStream(uri)?.use {
-            runCatching {
-                ExifInterface(it).getAttributeInt(
-                    ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL,
+    /**
+     * Photos are copied into the app as plain, upright JPEGs (PNG when they have transparency) of
+     * a sensible size. That makes every photo behave the same in the preview and the export,
+     * whatever the camera saved: HEIC, Ultra HDR, 50–200 MP shots, or rotated-by-metadata files.
+     */
+    private fun inspectImage(uri: Uri, name: String): MediaClip? = runCatching {
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        val bitmap = ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            decoder.setTargetColorSpace(ColorSpace.get(ColorSpace.Named.SRGB))
+            val longSide = maxOf(info.size.width, info.size.height)
+            if (longSide > MAX_IMAGE_SIDE) {
+                val scale = MAX_IMAGE_SIDE.toFloat() / longSide
+                decoder.setTargetSize(
+                    (info.size.width * scale).toInt().coerceAtLeast(1),
+                    (info.size.height * scale).toInt().coerceAtLeast(1),
                 )
-            }.getOrDefault(ExifInterface.ORIENTATION_NORMAL)
-        } ?: ExifInterface.ORIENTATION_NORMAL
-        val rotated = orientation in setOf(
-            ExifInterface.ORIENTATION_ROTATE_90,
-            ExifInterface.ORIENTATION_ROTATE_270,
-            ExifInterface.ORIENTATION_TRANSPOSE,
-            ExifInterface.ORIENTATION_TRANSVERSE,
-        )
-        MediaClip(
-            id = Ids.next(),
-            uri = uri,
-            mimeType = mimeType,
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 34) bitmap.gainmap = null // Drop Ultra HDR data.
+
+        val id = Ids.next()
+        val keepAlpha = bitmap.hasAlpha()
+        val dir = File(context.cacheDir, IMPORT_DIR).apply { mkdirs() }
+        val file = File(dir, "img_$id.${if (keepAlpha) "png" else "jpg"}")
+        file.outputStream().use { out ->
+            if (keepAlpha) bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            else bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+        }
+        val clip = MediaClip(
+            id = id,
+            uri = Uri.fromFile(file),
+            mimeType = if (keepAlpha) "image/png" else "image/jpeg",
             type = ClipType.IMAGE,
             name = name,
-            width = if (rotated) bounds.outHeight else bounds.outWidth,
-            height = if (rotated) bounds.outWidth else bounds.outHeight,
+            width = bitmap.width,
+            height = bitmap.height,
             sourceDurationUs = 0L,
             hasAudio = false,
         )
+        bitmap.recycle()
+        clip
     }.getOrNull()
+
+    /** Removes photo copies left over from earlier sessions. */
+    fun clearImportedCopies() {
+        File(context.cacheDir, IMPORT_DIR).listFiles()?.forEach { it.delete() }
+    }
 
     private fun displayName(uri: Uri): String =
         runCatching {
             context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
                 ?.use { cursor -> if (cursor.moveToFirst()) cursor.getString(0) else null }
         }.getOrNull() ?: uri.lastPathSegment ?: "media"
+
+    private companion object {
+        const val MAX_IMAGE_SIDE = 2160
+        const val IMPORT_DIR = "imports"
+    }
 }

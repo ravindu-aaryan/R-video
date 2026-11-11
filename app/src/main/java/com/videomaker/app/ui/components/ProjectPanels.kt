@@ -4,6 +4,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -53,6 +55,7 @@ import com.videomaker.app.model.ClipType
 import com.videomaker.app.model.OutputSettings
 import com.videomaker.app.model.OverlayLayer
 import com.videomaker.app.model.Resolution
+import com.videomaker.app.model.TextAnimation
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.TextStyle
 import com.videomaker.app.model.Transitions
@@ -180,6 +183,8 @@ private fun OverlayTrim(overlay: OverlayLayer, onUpdate: (String, (OverlayLayer)
 
 // ---- Text ------------------------------------------------------------------------------------------
 
+private val EMOJI = listOf("🔥", "❤️", "✨", "😂", "😍", "🎉", "💯", "👍", "🙌", "😎", "🥳", "⭐", "👉", "✅")
+
 private val TEXT_COLORS = listOf(
     0xFFFFFFFF, 0xFF000000, 0xFFFFD60A, 0xFFFF453A, 0xFFFF9F0A, 0xFF32D74B, 0xFF64D2FF, 0xFF5E5CE6, 0xFFFF375F,
 ).map { it.toInt() }
@@ -226,6 +231,14 @@ fun TextPanel(
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
         )
+        // Quick emoji / stickers: tap to add to the text.
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            EMOJI.forEach { emoji ->
+                TextButton(onClick = { onUpdate("emoji$emoji") { it.copy(text = it.text + emoji) } }) {
+                    Text(emoji, style = MaterialTheme.typography.titleLarge)
+                }
+            }
+        }
         // Colour swatches
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             TEXT_COLORS.forEach { argb ->
@@ -258,6 +271,13 @@ fun TextPanel(
                 ) { Text(style.label) }
             }
         }
+        Text(stringResource(R.string.text_animation), style = MaterialTheme.typography.labelLarge)
+        ChipRow(
+            options = TextAnimation.entries,
+            selected = selected.animation,
+            label = { it.label },
+            onSelect = { anim -> onUpdate("animation") { it.copy(animation = anim) } },
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             LabeledSlider(
                 stringResource(R.string.size), "${(selected.sizeFraction * 100).roundToInt()}", selected.sizeFraction,
@@ -391,12 +411,6 @@ fun TransitionsPanel(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         SwitchRow(
-            label = stringResource(R.string.fade_between),
-            supportingText = stringResource(R.string.fade_between_hint),
-            checked = transitions.fadeBetweenClips,
-            onCheckedChange = { on -> onUpdate("between") { it.copy(fadeBetweenClips = on) } },
-        )
-        SwitchRow(
             label = stringResource(R.string.fade_in_start),
             checked = transitions.fadeInAtStart,
             onCheckedChange = { on -> onUpdate("in") { it.copy(fadeInAtStart = on) } },
@@ -406,7 +420,7 @@ fun TransitionsPanel(
             checked = transitions.fadeOutAtEnd,
             onCheckedChange = { on -> onUpdate("out") { it.copy(fadeOutAtEnd = on) } },
         )
-        val anyFade = transitions.fadeBetweenClips || transitions.fadeInAtStart || transitions.fadeOutAtEnd
+        val anyFade = transitions.fadeInAtStart || transitions.fadeOutAtEnd
         LabeledSlider(
             stringResource(R.string.fade_length),
             String.format(java.util.Locale.US, "%.1fs", transitions.durationUs / 1_000_000f),
@@ -414,6 +428,11 @@ fun TransitionsPanel(
             { v -> onUpdate("length") { it.copy(durationUs = ((v * 10).roundToInt() * 100_000L)) } },
             0.2f..2f,
             enabled = anyFade,
+        )
+        Text(
+            stringResource(R.string.fades_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         HorizontalDivider()
         SwitchRow(

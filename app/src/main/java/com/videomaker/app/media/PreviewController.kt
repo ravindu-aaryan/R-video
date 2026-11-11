@@ -41,14 +41,17 @@ class PreviewController(private val context: Context) {
 
         val builder = CompositionPlayer.Builder(context)
             .setAudioAttributes(AudioAttributes.DEFAULT, /* handleAudioFocus= */ true)
-        if (composition.sequences.size > 1) {
-            // Needed to mix the overlay layer and music with the main timeline.
+        if (CompositionFactory.videoLayerCount(composition.sequences) > 1) {
+            // Needed to combine several video layers (overlay, transitions).
             builder.setVideoGraphFactory(MultipleInputVideoGraph.Factory())
         }
         val newPlayer = builder.build()
         newPlayer.addListener(object : Player.Listener {
             override fun onPlayerError(error: PlaybackException) {
-                onError?.invoke("Preview unavailable for this edit (${error.errorCodeName}). Export still works.")
+                var root: Throwable = error
+                while (root.cause != null && root.cause !== root) root = root.cause!!
+                val detail = root.message?.take(120) ?: root.javaClass.simpleName
+                onError?.invoke("Preview unavailable for this edit. Export may still work.\n${error.errorCodeName}: $detail")
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {

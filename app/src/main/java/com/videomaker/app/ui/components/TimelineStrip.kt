@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Gradient
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material3.Icon
@@ -47,6 +48,7 @@ import com.videomaker.app.R
 import com.videomaker.app.model.ClipType
 import com.videomaker.app.model.ColorGrading
 import com.videomaker.app.model.MediaClip
+import com.videomaker.app.model.TransitionType
 
 private val TILE_HEIGHT = 64.dp
 
@@ -176,6 +178,18 @@ private fun ClipTile(
                 },
                 color = Color.White,
                 style = MaterialTheme.typography.labelSmall,
+            )
+        }
+        if (index > 0 && clip.transition != TransitionType.NONE) {
+            Icon(
+                Icons.Filled.Gradient,
+                contentDescription = clip.transition.label,
+                tint = Color.White,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(2.dp)
+                    .size(16.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(4.dp)),
             )
         }
         if (playing) {

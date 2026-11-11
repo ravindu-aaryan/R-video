@@ -36,12 +36,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.videomaker.app.R
+import com.videomaker.app.model.ClipEffect
 import com.videomaker.app.model.ClipType
 import com.videomaker.app.model.ColorAdjust
 import com.videomaker.app.model.ColorGrading
 import com.videomaker.app.model.FilterPreset
 import com.videomaker.app.model.FitMode
 import com.videomaker.app.model.MediaClip
+import com.videomaker.app.model.TransitionType
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
@@ -289,12 +291,88 @@ fun FitPanel(clip: MediaClip, onUpdate: ClipUpdate, modifier: Modifier = Modifie
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        if (clip.type == ClipType.IMAGE) {
-            SwitchRow(
-                label = stringResource(R.string.slow_zoom),
-                supportingText = stringResource(R.string.slow_zoom_hint),
-                checked = clip.slowZoom,
-                onCheckedChange = { on -> onUpdate("zoom") { it.copy(slowZoom = on) } },
+        LabeledSlider(
+            stringResource(R.string.zoom), String.format(java.util.Locale.US, "%.1f×", clip.zoom), clip.zoom,
+            { v -> onUpdate("zoomScale") { it.copy(zoom = v) } }, 1f..3f,
+        )
+        LabeledSlider(
+            stringResource(R.string.horizontal), "${(clip.offsetX * 100).roundToInt()}", clip.offsetX,
+            { v -> onUpdate("offsetX") { it.copy(offsetX = v) } }, -1f..1f,
+            enabled = clip.zoom > 1f,
+        )
+        LabeledSlider(
+            stringResource(R.string.vertical), "${(clip.offsetY * 100).roundToInt()}", clip.offsetY,
+            { v -> onUpdate("offsetY") { it.copy(offsetY = v) } }, -1f..1f,
+            enabled = clip.zoom > 1f,
+        )
+        SwitchRow(
+            label = stringResource(R.string.slow_zoom),
+            supportingText = stringResource(R.string.slow_zoom_hint),
+            checked = clip.slowZoom,
+            onCheckedChange = { on -> onUpdate("zoom") { it.copy(slowZoom = on) } },
+        )
+    }
+}
+
+/** How this clip replaces the one before it. */
+@Composable
+fun TransitionPanel(
+    clip: MediaClip,
+    isFirst: Boolean,
+    onUpdate: ClipUpdate,
+    onApplyToAll: () -> Unit,
+    onShuffle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (isFirst) {
+            Text(
+                stringResource(R.string.transition_first),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                stringResource(R.string.transition_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            ChipRow(
+                options = TransitionType.entries,
+                selected = clip.transition,
+                label = { it.label },
+                onSelect = { type -> onUpdate("transition") { it.copy(transition = type) } },
+            )
+            LabeledSlider(
+                stringResource(R.string.transition_length),
+                String.format(java.util.Locale.US, "%.1fs", clip.transitionUs / 1_000_000f),
+                clip.transitionUs / 1_000_000f,
+                { v -> onUpdate("transitionLength") { it.copy(transitionUs = (v * 10).roundToInt() * 100_000L) } },
+                0.2f..1.5f,
+                enabled = clip.transition != TransitionType.NONE,
+            )
+        }
+        Row {
+            if (!isFirst) TextButton(onClick = onApplyToAll) { Text(stringResource(R.string.transition_all)) }
+            TextButton(onClick = onShuffle) { Text(stringResource(R.string.transition_shuffle)) }
+        }
+    }
+}
+
+/** A moving or stylised effect over the whole clip. */
+@Composable
+fun EffectsPanel(clip: MediaClip, onUpdate: ClipUpdate, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChipRow(
+            options = ClipEffect.entries,
+            selected = clip.effect,
+            label = { it.label },
+            onSelect = { fx -> onUpdate("effect") { it.copy(effect = fx) } },
+        )
+        if (clip.effect != ClipEffect.NONE && clip.effect != ClipEffect.MIRROR) {
+            LabeledSlider(
+                stringResource(R.string.strength), "${(clip.effectStrength * 100).roundToInt()}%", clip.effectStrength,
+                { v -> onUpdate("effectStrength") { it.copy(effectStrength = v) } }, 0.05f..1f,
             )
         }
     }
@@ -310,7 +388,11 @@ fun <T> ChipRow(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(
+        modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         options.forEach { option ->
             FilterChip(
                 selected = option == selected,

@@ -18,6 +18,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.ExperimentalApi
+import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.MultipleInputVideoGraph
 import androidx.media3.transformer.Composition
@@ -106,7 +107,7 @@ object Harness {
         onMain {
             val composition = CompositionFactory.build(doc)
             val builder = CompositionPlayer.Builder(context)
-            if (composition.sequences.size > 1) builder.setVideoGraphFactory(MultipleInputVideoGraph.Factory())
+            if (CompositionFactory.videoLayerCount(composition.sequences) > 1) builder.setVideoGraphFactory(MultipleInputVideoGraph.Factory())
             player = builder.build()
             player.addListener(object : Player.Listener {
                 override fun onPlayerError(e: PlaybackException) {
@@ -119,7 +120,7 @@ object Harness {
                     if (state == Player.STATE_READY) ready.countDown()
                 }
             })
-            player.setVideoSurface(reader.surface)
+            player.setVideoSurface(reader.surface, Size(doc.output.width, doc.output.height))
             player.setComposition(composition)
             player.prepare()
             player.play()

@@ -42,7 +42,9 @@
     <string name="tool_filters">Filters</string>
     <string name="tool_adjust">Adjust</string>
     <string name="tool_rotate">Rotate</string>
-    <string name="tool_fit">Fit</string>
+    <string name="tool_fit">Frame</string>
+    <string name="tool_transition">Transition</string>
+    <string name="tool_effects">Effects</string>
     <string name="tool_move_left">Move left</string>
     <string name="tool_move_right">Move right</string>
     <string name="tool_duplicate">Duplicate</string>
@@ -70,7 +72,16 @@
     <string name="fill_hint">Fills the frame, cropping the edges of the clip.</string>
     <string name="blur_hint">Shows the whole clip over a blurred copy of itself — great for vertical videos.</string>
     <string name="slow_zoom">Slow zoom</string>
-    <string name="slow_zoom_hint">Gently zooms in while the photo is on screen.</string>
+    <string name="slow_zoom_hint">Gently zooms in while the clip plays.</string>
+
+    <string name="zoom">Zoom</string>
+    <string name="transition_first">This is the first clip, so nothing comes before it. Pick another clip to choose how it enters — or use Mix it up to add transitions everywhere.</string>
+    <string name="transition_hint">How this clip replaces the one before it.</string>
+    <string name="transition_length">Transition length</string>
+    <string name="transition_all">Use on every cut</string>
+    <string name="transition_shuffle">Mix it up</string>
+    <string name="text_animation">Animation</string>
+    <string name="fades_hint">For transitions between clips, tap a clip and choose Transition.</string>
 
     <!-- Overlay -->
     <string name="overlay_empty">Layer a second video or an image (like a logo) on top, with adjustable transparency.</string>
@@ -100,8 +111,6 @@
     <string name="loop_music">Loop to fit video</string>
 
     <!-- Fades -->
-    <string name="fade_between">Fade between clips</string>
-    <string name="fade_between_hint">A smooth dip to black at every cut.</string>
     <string name="fade_in_start">Fade in at the start</string>
     <string name="fade_out_end">Fade out at the end</string>
     <string name="fade_length">Fade length</string>

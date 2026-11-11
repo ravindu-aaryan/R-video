@@ -12,6 +12,7 @@ import androidx.media3.common.audio.SpeedProvider
 import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.Size
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.effect.GaussianBlur
 import androidx.media3.effect.GaussianBlurWithFrameOverlaid
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
@@ -29,6 +30,8 @@ import com.videomaker.app.model.EditorDocument
 import com.videomaker.app.model.FitMode
 import com.videomaker.app.model.MediaClip
 import com.videomaker.app.model.OverlayLayer
+import com.videomaker.app.model.TransitionType
+import com.videomaker.app.model.ClipEffect
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -55,6 +58,8 @@ object CompositionFactory {
         require(doc.clips.isNotEmpty()) { "Add at least one video or photo" }
         val output = doc.output
         val totalUs = doc.totalDurationUs
+        val starts = doc.clipStartsUs()
+        val overlaps = doc.overlapsUs()
 
         val sequences = mutableListOf<EditedMediaItemSequence>()
         var overlayWindow: LongRange? = null
@@ -65,8 +70,35 @@ object CompositionFactory {
                 overlayWindow = window
             }
         }
+        val overlayInputs = sequences.size
 
-        sequences += buildMainSequence(doc)
+        val items = buildMainItems(doc, starts, overlaps)
+        val mainTracks = buildSet {
+            add(C.TRACK_TYPE_VIDEO)
+            if (output.keepOriginalAudio) add(C.TRACK_TYPE_AUDIO)
+        }
+        // Overlapping transitions need two clips on screen at once, so the clips alternate between
+        // two tracks ("A/B roll"). Without such transitions a single track is enough.
+        val twoTracks = overlaps.any { it > 0 }
+        if (twoTracks) {
+            for (track in 0..1) {
+                val builder = EditedMediaItemSequence.Builder(mainTracks)
+                var cursorUs = 0L
+                for (index in items.indices) {
+                    if (index % 2 != track) continue
+                    val gapUs = starts[index] - cursorUs
+                    if (gapUs > 0) builder.addGap(gapUs)
+                    builder.addItem(items[index])
+                    cursorUs = starts[index] + doc.clips[index].timelineDurationUs
+                }
+                // Both tracks must span the whole video.
+                if (totalUs - cursorUs > 0) builder.addGap(totalUs - cursorUs)
+                sequences += builder.build()
+            }
+        } else {
+            sequences += EditedMediaItemSequence.Builder(mainTracks).addItems(items).build()
+        }
+
         doc.audio?.let { sequences += buildMusicSequence(it, totalUs) }
 
         val compositionVideoEffects = mutableListOf<Effect>()
@@ -82,44 +114,85 @@ object CompositionFactory {
             compositionAudio += FadeAudioProcessor(totalUs, fadeUs = minOf(1_500_000L, totalUs / 3))
         }
 
-        return Composition.Builder(sequences)
-            .setVideoCompositorSettings(
-                LayerCompositorSettings(output.width, output.height, doc.overlay, overlayWindow),
+        val builder = Composition.Builder(sequences)
+        // Media3 only accepts layer settings when there is more than one video layer to combine;
+        // with a single layer it refuses to play or export.
+        if (videoLayerCount(sequences) > 1) {
+            builder.setVideoCompositorSettings(
+                LayerCompositorSettings(
+                    outputWidth = output.width,
+                    outputHeight = output.height,
+                    overlay = doc.overlay,
+                    overlayWindowUs = overlayWindow,
+                    overlayInputs = overlayInputs,
+                    twoTracks = twoTracks,
+                    clips = doc.clips,
+                    startsUs = starts,
+                    overlapsUs = overlaps,
+                ),
             )
+        }
+        return builder
             .setEffects(Effects(compositionAudio, compositionVideoEffects))
             // The compositor works in SDR; convert HDR phone recordings so they can be mixed.
             .setHdrMode(Composition.HDR_MODE_TONE_MAP_HDR_TO_SDR_USING_OPEN_GL)
             .build()
     }
 
+    /** How many sequences carry video (the overlay and one or two main tracks). */
+    fun videoLayerCount(sequences: List<EditedMediaItemSequence>): Int =
+        sequences.count { C.TRACK_TYPE_VIDEO in it.trackTypes }
+
     // ---- Main timeline -------------------------------------------------------------------------
 
-    private fun buildMainSequence(doc: EditorDocument): EditedMediaItemSequence {
+    private fun buildMainItems(
+        doc: EditorDocument,
+        starts: List<Long>,
+        overlaps: List<Long>,
+    ): List<EditedMediaItem> {
         val output = doc.output
-        val transitions = doc.transitions
-        val starts = doc.clipStartsUs()
+        val fades = doc.transitions
         val lastIndex = doc.clips.lastIndex
 
-        val items = doc.clips.mapIndexed { index, clip ->
+        return doc.clips.mapIndexed { index, clip ->
             val startUs = starts[index]
             val durationUs = clip.timelineDurationUs
+            val next = doc.clips.getOrNull(index + 1)
             // Fades can take at most a third of a clip so short clips stay visible.
             val maxFade = durationUs / 3
             val fadeIn = when {
-                index == 0 && transitions.fadeInAtStart -> transitions.durationUs
-                index > 0 && transitions.fadeBetweenClips -> transitions.durationUs / 2
+                index == 0 && fades.fadeInAtStart -> fades.durationUs
+                index > 0 && clip.transition == TransitionType.DIP_BLACK -> clip.transitionUs / 2
                 else -> 0L
             }.coerceAtMost(maxFade)
             val fadeOut = when {
-                index == lastIndex && transitions.fadeOutAtEnd -> transitions.durationUs
-                index < lastIndex && transitions.fadeBetweenClips -> transitions.durationUs / 2
+                index == lastIndex && fades.fadeOutAtEnd -> fades.durationUs
+                next != null && next.transition == TransitionType.DIP_BLACK -> next.transitionUs / 2
                 else -> 0L
             }.coerceAtMost(maxFade)
 
             val effects = mutableListOf<Effect>()
             transformFor(clip)?.let { effects += it }
-            if (clip.type == ClipType.IMAGE && clip.slowZoom) {
-                effects += SlowZoomEffect(startUs, durationUs)
+
+            val fx = clip.effect
+            val strength = clip.effectStrength.coerceIn(0f, 1f)
+            val shake = if (fx == ClipEffect.SHAKE) strength else 0f
+            val pulse = if (fx == ClipEffect.PULSE) strength else 0f
+            if (clip.zoom != 1f || clip.slowZoom || shake > 0f || pulse > 0f) {
+                effects += MotionEffect(
+                    zoom = clip.zoom.coerceIn(1f, 4f),
+                    offsetX = clip.offsetX,
+                    offsetY = clip.offsetY,
+                    slowZoom = clip.slowZoom,
+                    shake = shake,
+                    pulse = pulse,
+                    clipStartUs = startUs,
+                    clipDurationUs = durationUs,
+                )
+            }
+            when {
+                fx == ClipEffect.BLUR -> effects += GaussianBlur(2f + 22f * strength)
+                ShaderFxEffect.supports(fx) -> effects += ShaderFxEffect(fx, strength)
             }
             val colorMatrix = ColorGrading.matrixFor(clip)
             if (!ColorGrading.isIdentity(colorMatrix) || fadeIn > 0 || fadeOut > 0) {
@@ -129,12 +202,6 @@ object CompositionFactory {
 
             editedItem(clip, effects, clip.volume)
         }
-
-        val tracks = buildSet {
-            add(C.TRACK_TYPE_VIDEO)
-            if (output.keepOriginalAudio) add(C.TRACK_TYPE_AUDIO)
-        }
-        return EditedMediaItemSequence.Builder(tracks).addItems(items).build()
     }
 
     /** User rotation and flips, or null when there are none. */
@@ -277,17 +344,25 @@ object CompositionFactory {
 
     private fun even(value: Int) = value - (value % 2)
 
-    /** Fixes the output size and places/hides the overlay layer (input 0). */
+    /**
+     * Fixes the output size, places/hides the overlay layer, and animates the two main tracks
+     * through transitions. Inputs are numbered in sequence order and input 0 is drawn on top.
+     */
     private class LayerCompositorSettings(
         private val outputWidth: Int,
         private val outputHeight: Int,
         overlay: OverlayLayer?,
         private val overlayWindowUs: LongRange?,
+        private val overlayInputs: Int,
+        private val twoTracks: Boolean,
+        private val clips: List<MediaClip>,
+        private val startsUs: List<Long>,
+        private val overlapsUs: List<Long>,
     ) : VideoCompositorSettings {
 
-        private val background: OverlaySettings = StaticOverlaySettings.Builder().build()
+        private val normal: OverlaySettings = StaticOverlaySettings.Builder().build()
         private val hidden: OverlaySettings = StaticOverlaySettings.Builder().setAlphaScale(0f).build()
-        private val visible: OverlaySettings? = overlay?.let {
+        private val overlayVisible: OverlaySettings? = overlay?.let {
             val x = it.positionX.coerceIn(-1f, 1f)
             val y = it.positionY.coerceIn(-1f, 1f)
             StaticOverlaySettings.Builder()
@@ -302,9 +377,94 @@ object CompositionFactory {
         override fun getOutputSize(inputSizes: List<Size>): Size = Size(outputWidth, outputHeight)
 
         override fun getOverlaySettings(inputId: Int, presentationTimeUs: Long): OverlaySettings {
-            val window = overlayWindowUs
-            if (inputId != 0 || visible == null || window == null) return background
-            return if (presentationTimeUs in window) visible else hidden
+            if (inputId < overlayInputs) {
+                val window = overlayWindowUs
+                if (overlayVisible == null || window == null) return hidden
+                return if (presentationTimeUs in window) overlayVisible else hidden
+            }
+            if (!twoTracks) return normal
+            val track = inputId - overlayInputs
+            if (track > 1) return normal
+            return trackSettings(track, presentationTimeUs)
         }
+
+        /** Settings for main track 0 (on top) or 1 (below) at time [t]. */
+        private fun trackSettings(track: Int, t: Long): OverlaySettings {
+            // The clip of this track that is on screen at t, if any.
+            var index = -1
+            for (i in clips.indices) {
+                if (i % 2 == track && t >= startsUs[i] && t < startsUs[i] + clips[i].timelineDurationUs) {
+                    index = i
+                    break
+                }
+            }
+            if (index < 0) return hidden // This track is in a gap.
+
+            val onTop = track == 0
+            // Entering: this clip is replacing the previous one.
+            val inUs = overlapsUs[index]
+            if (inUs > 0 && t < startsUs[index] + inUs) {
+                val p = (t - startsUs[index]).toFloat() / inUs
+                return TransitionMath.settings(clips[index].transition, incoming = true, ease(p), onTop)
+            }
+            // Leaving: the next clip is replacing this one.
+            val next = index + 1
+            if (next < clips.size && overlapsUs[next] > 0 && t >= startsUs[next]) {
+                val p = (t - startsUs[next]).toFloat() / overlapsUs[next]
+                return TransitionMath.settings(clips[next].transition, incoming = false, ease(p), onTop)
+            }
+            return normal
+        }
+
+        private fun ease(p: Float): Float {
+            val x = p.coerceIn(0f, 1f)
+            return x * x * (3f - 2f * x)
+        }
+    }
+}
+
+/** Where each of the two clips sits during a transition, for progress p from 0 to 1. */
+@OptIn(UnstableApi::class)
+object TransitionMath {
+
+    fun settings(type: TransitionType, incoming: Boolean, p: Float, onTop: Boolean): OverlaySettings {
+        val b = StaticOverlaySettings.Builder()
+        // Crossfade rule: only the upper layer changes opacity, revealing or covering the lower one.
+        val crossfadeAlpha = when {
+            !onTop -> 1f
+            incoming -> p
+            else -> 1f - p
+        }
+        when (type) {
+            TransitionType.NONE, TransitionType.DIP_BLACK -> Unit
+            TransitionType.FADE -> b.setAlphaScale(crossfadeAlpha)
+            // Slides push the old clip out while the new one follows it in, edge to edge.
+            TransitionType.SLIDE_LEFT -> slide(b, incoming, p, dx = -1f, dy = 0f)
+            TransitionType.SLIDE_RIGHT -> slide(b, incoming, p, dx = 1f, dy = 0f)
+            TransitionType.SLIDE_UP -> slide(b, incoming, p, dx = 0f, dy = 1f)
+            TransitionType.SLIDE_DOWN -> slide(b, incoming, p, dx = 0f, dy = -1f)
+            TransitionType.ZOOM -> {
+                val scale = if (incoming) 1.5f - 0.5f * p else 1f + 0.5f * p
+                b.setScale(scale, scale).setAlphaScale(crossfadeAlpha)
+            }
+            TransitionType.SPIN -> {
+                val angle = if (incoming) 70f * (1f - p) else -70f * p
+                val scale = 1f + 0.6f * (if (incoming) 1f - p else p)
+                b.setRotationDegrees(angle).setScale(scale, scale).setAlphaScale(crossfadeAlpha)
+            }
+        }
+        return b.build()
+    }
+
+    /**
+     * Moves in direction (dx, dy). The outgoing clip's trailing edge and the incoming clip's
+     * leading edge are pinned to the same moving line, so they travel together.
+     */
+    private fun slide(b: StaticOverlaySettings.Builder, incoming: Boolean, p: Float, dx: Float, dy: Float) {
+        // The shared line starts at the edge the new clip comes from and ends at the opposite edge.
+        val line = 1f - 2f * p
+        val edge = if (incoming) 1f else -1f
+        b.setOverlayFrameAnchor(dx * edge, dy * edge)
+        b.setBackgroundFrameAnchor((-dx * line).coerceIn(-1f, 1f), (-dy * line).coerceIn(-1f, 1f))
     }
 }

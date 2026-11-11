@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.CropFree
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.filled.Flip
 import androidx.compose.material.icons.filled.Gradient
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.PhotoFilter
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.TextFields
@@ -75,7 +77,7 @@ fun ProjectToolBar(
         ToolButton(Icons.Filled.TextFields, stringResource(R.string.tool_text), activeTool == Tool.TEXT, onClick = { onTool(Tool.TEXT) })
         ToolButton(Icons.Filled.LibraryMusic, stringResource(R.string.tool_music), activeTool == Tool.MUSIC, onClick = { onTool(Tool.MUSIC) })
         ToolButton(Icons.Filled.Layers, stringResource(R.string.tool_overlay), activeTool == Tool.OVERLAY, onClick = { onTool(Tool.OVERLAY) })
-        ToolButton(Icons.Filled.Gradient, stringResource(R.string.tool_transitions), activeTool == Tool.TRANSITIONS, onClick = { onTool(Tool.TRANSITIONS) })
+        ToolButton(Icons.Filled.Opacity, stringResource(R.string.tool_transitions), activeTool == Tool.TRANSITIONS, onClick = { onTool(Tool.TRANSITIONS) })
         ToolButton(Icons.Filled.AspectRatio, stringResource(R.string.tool_format), activeTool == Tool.FORMAT, onClick = { onTool(Tool.FORMAT) })
     }
 }
@@ -102,6 +104,8 @@ fun ClipToolBar(
             onClick = { onTool(Tool.TRIM) },
         )
         ToolButton(Icons.Filled.ContentCut, stringResource(R.string.tool_split), false, actions.onSplit)
+        ToolButton(Icons.Filled.Gradient, stringResource(R.string.tool_transition), activeTool == Tool.TRANSITION, onClick = { onTool(Tool.TRANSITION) })
+        ToolButton(Icons.Filled.AutoAwesome, stringResource(R.string.tool_effects), activeTool == Tool.EFFECTS, onClick = { onTool(Tool.EFFECTS) })
         if (isVideo) {
             ToolButton(Icons.Filled.Speed, stringResource(R.string.tool_speed), activeTool == Tool.SPEED, onClick = { onTool(Tool.SPEED) })
             if (clip.hasAudio) {

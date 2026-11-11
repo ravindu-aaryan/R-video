@@ -60,6 +60,7 @@ import com.videomaker.app.model.Transitions
 import com.videomaker.app.ui.components.AdjustPanel
 import com.videomaker.app.ui.components.ClipActions
 import com.videomaker.app.ui.components.ClipToolBar
+import com.videomaker.app.ui.components.EffectsPanel
 import com.videomaker.app.ui.components.EmptyEditor
 import com.videomaker.app.ui.components.ExportDoneDialog
 import com.videomaker.app.ui.components.ExportFailedDialog
@@ -76,6 +77,7 @@ import com.videomaker.app.ui.components.RotatePanel
 import com.videomaker.app.ui.components.SpeedPanel
 import com.videomaker.app.ui.components.TextPanel
 import com.videomaker.app.ui.components.TimelineStrip
+import com.videomaker.app.ui.components.TransitionPanel
 import com.videomaker.app.ui.components.TransitionsPanel
 import com.videomaker.app.ui.components.TrimPanel
 import com.videomaker.app.ui.components.VolumePanel
@@ -113,6 +115,8 @@ fun EditorRoute(viewModel: EditorViewModel = viewModel()) {
             onClipUpdate = viewModel::updateSelectedClip,
             onTrimToPlayhead = viewModel::trimToPlayhead,
             onApplyLookToAll = viewModel::applyLookToAll,
+            onApplyTransitionToAll = viewModel::applyTransitionToAll,
+            onShuffleTransitions = viewModel::shuffleTransitions,
             clipActions = ClipActions(
                 onDeselect = { viewModel.selectClip(null) },
                 onSplit = viewModel::splitAtPlayhead,
@@ -161,6 +165,8 @@ class EditorActions(
     val onClipUpdate: (key: String, transform: (MediaClip) -> MediaClip) -> Unit,
     val onTrimToPlayhead: (setStart: Boolean) -> Unit,
     val onApplyLookToAll: () -> Unit,
+    val onApplyTransitionToAll: () -> Unit,
+    val onShuffleTransitions: () -> Unit,
     val clipActions: ClipActions,
     val onPickOverlay: () -> Unit,
     val onOverlayUpdate: (key: String, transform: (OverlayLayer) -> OverlayLayer) -> Unit,
@@ -353,6 +359,16 @@ private fun ToolPanel(
                 Tool.ADJUST -> clip?.let { AdjustPanel(it, actions.onClipUpdate, actions.onApplyLookToAll) }
                 Tool.ROTATE -> clip?.let { RotatePanel(it, actions.onClipUpdate) }
                 Tool.FIT -> clip?.let { FitPanel(it, actions.onClipUpdate) }
+                Tool.TRANSITION -> clip?.let {
+                    TransitionPanel(
+                        clip = it,
+                        isFirst = doc.clips.firstOrNull()?.id == it.id,
+                        onUpdate = actions.onClipUpdate,
+                        onApplyToAll = actions.onApplyTransitionToAll,
+                        onShuffle = actions.onShuffleTransitions,
+                    )
+                }
+                Tool.EFFECTS -> clip?.let { EffectsPanel(it, actions.onClipUpdate) }
                 Tool.OVERLAY -> OverlayPanel(
                     overlay = doc.overlay,
                     thumbnail = doc.overlay?.let { thumbnails[it.clip.id] },
@@ -397,4 +413,6 @@ private val Tool.titleRes: Int
         Tool.ADJUST -> R.string.tool_adjust
         Tool.ROTATE -> R.string.tool_rotate
         Tool.FIT -> R.string.tool_fit
+        Tool.TRANSITION -> R.string.tool_transition
+        Tool.EFFECTS -> R.string.tool_effects
     }

@@ -1,6 +1,5 @@
 package com.videomaker.app.media
 
-import android.graphics.Matrix
 import android.graphics.Typeface
 import android.text.SpannableString
 import android.text.Spanned
@@ -17,11 +16,11 @@ import androidx.media3.common.OverlaySettings
 import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
-import androidx.media3.effect.MatrixTransformation
 import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.StaticOverlaySettings
 import androidx.media3.effect.TextOverlay
 import com.videomaker.app.model.ColorGrading
+import com.videomaker.app.model.TextAnimation
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.TextStyle
 import java.nio.ByteBuffer
@@ -60,23 +59,6 @@ class ColorAndFadeEffect(
     }
 }
 
-/** Slow zoom ("Ken Burns") across a photo's time on screen. */
-@OptIn(UnstableApi::class)
-class SlowZoomEffect(
-    private val clipStartUs: Long,
-    private val clipDurationUs: Long,
-    private val fromScale: Float = 1f,
-    private val toScale: Float = 1.18f,
-) : MatrixTransformation {
-    override fun getMatrix(presentationTimeUs: Long): Matrix {
-        val progress = ((presentationTimeUs - clipStartUs).toFloat() / clipDurationUs).coerceIn(0f, 1f)
-        // Ease in-out so the movement starts and ends gently.
-        val eased = progress * progress * (3f - 2f * progress)
-        val scale = fromScale + (toScale - fromScale) * eased
-        return Matrix().apply { postScale(scale, scale) }
-    }
-}
-
 /** A caption shown between [TextItem.startUs] and [TextItem.endUs], with a short fade. */
 @OptIn(UnstableApi::class)
 class CaptionOverlay(
@@ -89,26 +71,39 @@ class CaptionOverlay(
     private val endUs = item.endUs
     private val x = item.positionX.coerceIn(-1f, 1f)
     private val y = item.positionY.coerceIn(-1f, 1f)
-    private val settingsCache = HashMap<Int, OverlaySettings>()
+    private val animation = item.animation
 
     override fun getText(presentationTimeUs: Long): SpannableString = text
 
     override fun getOverlaySettings(presentationTimeUs: Long): OverlaySettings {
-        val fadeUs = 150_000f
-        val alpha = minOf(
-            (presentationTimeUs - startUs) / fadeUs,
-            (endUs - presentationTimeUs) / fadeUs,
-            1f,
-        ).coerceIn(0f, 1f)
-        // Quantise alpha so we reuse a few settings objects instead of allocating per frame.
-        val key = (alpha * 20).toInt()
-        return settingsCache.getOrPut(key) {
-            StaticOverlaySettings.Builder()
-                .setAlphaScale(key / 20f)
-                .setOverlayFrameAnchor(x, y)
-                .setBackgroundFrameAnchor(x * 0.92f, y * 0.9f)
-                .build()
+        val animUs = 280_000f
+        val inP = ((presentationTimeUs - startUs) / animUs).coerceIn(0f, 1f)
+        val outP = ((endUs - presentationTimeUs) / animUs).coerceIn(0f, 1f)
+        val visible = presentationTimeUs in startUs until endUs
+        val edge = minOf(inP, outP)
+        var alpha = if (visible) 1f else 0f
+        var scale = 1f
+        var shiftY = 0f
+        when (animation) {
+            TextAnimation.NONE -> Unit
+            TextAnimation.FADE -> alpha *= edge
+            TextAnimation.SLIDE -> {
+                alpha *= edge
+                val eased = 1f - (1f - inP) * (1f - inP)
+                shiftY = -(1f - eased) * 0.18f
+            }
+            TextAnimation.POP -> {
+                alpha *= minOf(1f, edge * 2f)
+                // Grows past full size, then settles.
+                scale = 0.6f + 0.4f * inP + 0.18f * kotlin.math.sin(Math.PI.toFloat() * inP)
+            }
         }
+        return StaticOverlaySettings.Builder()
+            .setAlphaScale(alpha)
+            .setScale(scale, scale)
+            .setOverlayFrameAnchor(x, y)
+            .setBackgroundFrameAnchor(x * 0.92f, (y * 0.9f + shiftY).coerceIn(-1f, 1f))
+            .build()
     }
 
     private companion object {
