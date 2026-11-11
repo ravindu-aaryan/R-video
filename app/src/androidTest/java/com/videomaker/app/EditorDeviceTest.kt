@@ -37,8 +37,9 @@ class EditorDeviceTest {
     private fun sourceVideo(name: String): MediaClip = Harness.video(Harness.export(photosDoc(), name))
 
     private fun check(doc: EditorDocument, name: String) {
-        assertNull("preview of $name", Harness.preview(doc))
-        Harness.export(doc, name)
+        val previewError = Harness.preview(doc)
+        Harness.export(doc, name) // Run the export even if the preview failed, to see both results.
+        assertNull("preview of $name", previewError)
     }
 
     @Test
@@ -87,26 +88,37 @@ class EditorDeviceTest {
     }
 
     @Test
-    fun looksFramingTextAndFades() {
+    fun blurBackground() {
         val clips = listOf(
-            Harness.photo("a", 1600, 900, Color.RED).copy(
-                filter = FilterPreset.VINTAGE, fit = FitMode.BLUR, slowZoom = true,
-            ),
-            Harness.photo("b", 1600, 900, Color.BLUE).copy(
+            Harness.photo("blur1", 1600, 900, Color.RED).copy(fit = FitMode.BLUR),
+            Harness.photo("blur2", 1600, 900, Color.BLUE).copy(fit = FitMode.BLUR),
+        )
+        check(EditorDocument(clips = clips, output = portrait), "blur_background")
+    }
+
+    @Test
+    fun framing() {
+        val clips = listOf(
+            Harness.photo("f1", 1600, 900, Color.RED).copy(filter = FilterPreset.VINTAGE, slowZoom = true),
+            Harness.photo("f2", 1600, 900, Color.BLUE).copy(
                 fit = FitMode.FILL, zoom = 1.8f, offsetX = 0.5f, rotationDegrees = 90, flipHorizontal = true,
                 transition = TransitionType.DIP_BLACK,
             ),
         )
-        val texts = TextAnimation.entries.mapIndexed { i, anim ->
-            TextItem(id = 100L + i, text = "Hello $i 🔥", animation = anim, startUs = i * 800_000L, endUs = i * 800_000L + 1_500_000L, positionY = -0.8f + i * 0.4f)
-        }
         val doc = EditorDocument(
             clips = clips,
-            texts = texts,
             transitions = Transitions(fadeInAtStart = true, fadeOutAtEnd = true, fadeAudio = true),
             output = portrait,
         )
-        check(doc, "looks")
+        check(doc, "framing")
+    }
+
+    @Test
+    fun captions() {
+        val texts = TextAnimation.entries.mapIndexed { i, anim ->
+            TextItem(id = 100L + i, text = "Hello $i 🔥", animation = anim, startUs = i * 800_000L, endUs = i * 800_000L + 1_500_000L, positionY = -0.8f + i * 0.4f)
+        }
+        check(EditorDocument(clips = photos(), texts = texts, output = portrait), "captions")
     }
 
     @Test

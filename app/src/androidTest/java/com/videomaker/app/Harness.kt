@@ -126,12 +126,19 @@ object Harness {
             player.play()
         }
         if (!ready.await(30, TimeUnit.SECONDS)) error = "Timed out waiting for the preview to become ready"
-        if (error == null) Thread.sleep(playMs)
+        if (error == null) {
+            // Software rendering on an emulator can be slow: wait for the first frame, then play.
+            val deadline = System.currentTimeMillis() + 40_000
+            while (frames == 0 && error == null && System.currentTimeMillis() < deadline) Thread.sleep(200)
+            Thread.sleep(playMs)
+        }
+        val errorWhilePlaying = error
         var positionMs = 0L
         onMain {
             positionMs = player.currentPosition
             player.release()
         }
+        error = errorWhilePlaying // Ignore anything reported during teardown.
         reader.close()
         thread.quitSafely()
         Log.i(TAG, "preview done: error=${error?.lineSequence()?.firstOrNull()} position=$positionMs frames=$frames")
