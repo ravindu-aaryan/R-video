@@ -182,17 +182,18 @@ object Harness {
      * A square photo with four coloured quarters (top-left red, top-right green, bottom-left blue,
      * bottom-right yellow) and fine stripes, so every kind of effect visibly changes it.
      */
-    fun pattern(name: String, size: Int = 720, seconds: Float = 2f): MediaClip {
+    fun pattern(name: String, size: Int = 720, seconds: Float = 2f, soft: Boolean = false): MediaClip {
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint()
         val h = size / 2f
         val f = size.toFloat()
-        paint.color = Color.RED; canvas.drawRect(0f, 0f, h, h, paint)
-        paint.color = Color.GREEN; canvas.drawRect(h, 0f, f, h, paint)
-        paint.color = Color.BLUE; canvas.drawRect(0f, h, h, f, paint)
-        paint.color = Color.YELLOW; canvas.drawRect(h, h, f, f, paint)
-        paint.color = Color.WHITE
+        // "Soft" uses everyday muted colours, which colour filters can still push around.
+        paint.color = if (soft) Color.rgb(170, 110, 90) else Color.RED; canvas.drawRect(0f, 0f, h, h, paint)
+        paint.color = if (soft) Color.rgb(90, 150, 120) else Color.GREEN; canvas.drawRect(h, 0f, f, h, paint)
+        paint.color = if (soft) Color.rgb(100, 110, 160) else Color.BLUE; canvas.drawRect(0f, h, h, f, paint)
+        paint.color = if (soft) Color.rgb(160, 150, 100) else Color.YELLOW; canvas.drawRect(h, h, f, f, paint)
+        paint.color = if (soft) Color.rgb(200, 200, 200) else Color.WHITE
         var x = 0f
         while (x < f) {
             canvas.drawRect(x, 0f, x + 6f, f, paint)

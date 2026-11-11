@@ -127,10 +127,10 @@ class VisualResultTest {
 
     @Test
     fun everyFilter_changesTheColours() {
-        val base = Harness.frame(export("filter_base", Harness.pattern("pat")), 1f)
+        val base = Harness.frame(export("filter_base", Harness.pattern("soft", soft = true)), 1f)
         val failures = mutableListOf<String>()
         for (filter in FilterPreset.entries.filter { it != FilterPreset.NONE }) {
-            val frame = Harness.frame(export("filter_$filter", Harness.pattern("pat").copy(filter = filter)), 1f)
+            val frame = Harness.frame(export("filter_$filter", Harness.pattern("soft", soft = true).copy(filter = filter)), 1f)
             val change = Harness.difference(base, frame)
             android.util.Log.i(Harness.TAG, "filter $filter changes picture by $change")
             if (change < 3f) failures += "$filter (change $change)"
