@@ -19,22 +19,24 @@ Undo/redo covers every edit, and quick actions (delete, split, duplicate) offer 
 |---|---|
 | Trim / Duration | Range slider, plus *Start / End at playhead* for frame-accurate cuts. Photos: 0.5–20 s. |
 | Split | Cuts the clip under the playhead in two. |
+| Transition | How the clip enters: Crossfade, Dip to black, Slide left/right/up/down, Zoom, Spin. Adjustable length, *Use on every cut*, *Mix it up*. |
+| Effects | Glitch, RGB split, VHS, Shake, Beat zoom, Flash, Vignette, Blur, Pixelate, Mirror, Wave — with strength. |
 | Speed | 0.25× to 4×, pitch preserved. |
 | Volume | 0–200 %, mute. |
 | Filters | 10 looks (Vivid, Warm, Cool, Vintage, Matte, Drama, Mono, Noir, Sepia…) with strength; thumbnails preview each look. *Apply to all clips*. |
 | Adjust | Brightness, contrast, saturation, warmth. |
 | Rotate | 90° steps, flip horizontal/vertical. |
-| Fit | Fit (bars), Fill (crop) or Blur background. Photos: slow "Ken Burns" zoom. |
+| Frame | Fit (bars), Fill (crop) or Blur background; zoom up to 3× and reposition; slow "Ken Burns" zoom. |
 | Move, Duplicate, Delete | Reorder and manage clips. |
 
 **Project tools** (nothing selected)
 
 | Tool | What it does |
 |---|---|
-| Text | Titles/captions: colour, size, bold, plain/shadow/box style, 3×3 position grid + fine sliders, on-screen time range. |
+| Text | Titles/captions: colour, size, bold, plain/shadow/box style, Fade / Slide up / Pop animations, quick emoji, 3×3 position grid + fine sliders, on-screen time range. |
 | Music | Background track with volume, start offset within the song, loop to fit. |
 | Overlay | Second video or image on top: opacity, size, position, start time, trim, optional sound. |
-| Fades | Dip to black between clips, fade in at start / out at end, adjustable length, fade all sound in & out. |
+| Fades | Fade in at start / out at end, adjustable length, fade all sound in & out. |
 | Format | 16:9, 9:16, 1:1, 4:5; 720p or 1080p; keep or drop original sound. |
 
 ## Build and run
@@ -57,7 +59,8 @@ app/src/main/java/com/videomaker/app/
 │   └── ColorGrading.kt        filters + adjustments as one colour matrix (shared by export and thumbnails)
 ├── media/
 │   ├── CompositionFactory.kt  document → Media3 Composition (used for preview AND export)
-│   ├── CustomEffects.kt       colour/fade GPU effect, slow zoom, captions, audio fade, volume
+│   ├── CustomEffects.kt       colour/fade GPU effect, animated captions, audio fade, volume
+│   ├── ReelEffects.kt         zoom/shake/beat motion and shader effects (glitch, VHS, …)
 │   ├── PreviewController.kt   CompositionPlayer for the live preview
 │   ├── MediaInspector.kt      size, length, rotation, thumbnails
 │   └── VideoExporter.kt       Transformer export + save to gallery
@@ -66,6 +69,16 @@ app/src/main/java/com/videomaker/app/
     ├── EditorScreen.kt        preview, timeline strip, tool panel, tool bar
     └── components/            panels, tool bars, timeline, preview, dialogs
 ```
+
+Transitions that show two clips at once (crossfade, slides, zoom, spin) use an "A/B roll": clips
+alternate between two video tracks that overlap for the transition, and the compositor animates
+each track's opacity, position, scale and rotation. Without such transitions a single track is used.
+
+## Tests on a real Android runtime
+
+`app/src/androidTest` runs real previews (CompositionPlayer) and exports (Transformer) of test
+projects — photos only, video + photo, every transition, every effect, captions, overlay — on an
+emulator. The *Device tests* workflow runs them on every push to the `dev` branch.
 
 Composition layout: sequence 0 is the overlay (Media3 draws the first video sequence on top,
 padded with gaps and hidden outside its window), then the main timeline, then music. Captions
@@ -80,5 +93,5 @@ which is what Media3 passes to effects during export.
   you stop editing. If a device can't preview a particular edit, a message says so and export still
   works.
 - Export runs while the app is open; very long projects could move export into a foreground service.
-- Ideas for later: crossfade transitions (overlapping clips), stickers, voice-over recording,
-  keyframed overlay motion, saving projects as drafts.
+- Not included yet: reverse playback, speed ramps, voice-over recording, auto-captions, a music
+  library, background removal, keyframes, saving projects as drafts.
