@@ -24,6 +24,7 @@ import com.videomaker.app.model.MediaClip
 import com.videomaker.app.model.OutputSettings
 import com.videomaker.app.model.OverlayLayer
 import com.videomaker.app.model.PlaybackState
+import com.videomaker.app.model.Template
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.Tool
 import com.videomaker.app.model.TransitionType
@@ -213,6 +214,8 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
                 }
                 doc.copy(clips = doc.clips + clips, output = output)
             }
+            // Point new projects at the one-tap templates.
+            if (isFirst) _uiState.update { it.copy(activeTool = Tool.TEMPLATES) }
             clips.forEach { loadThumbnail(it) }
         }
     }
@@ -223,6 +226,12 @@ class EditorViewModel(application: Application) : AndroidViewModel(application) 
     fun updateSelectedClip(key: String, transform: (MediaClip) -> MediaClip) {
         val id = _uiState.value.selectedClipId ?: return
         edit("$key:$id") { doc -> doc.copy(clips = doc.clips.map { if (it.id == id) transform(it) else it }) }
+    }
+
+    /** Restyles the whole project with a one-tap template. */
+    fun applyTemplate(template: Template) {
+        edit { template.applyTo(it) }
+        showMessage("${template.label} applied", canUndo = true)
     }
 
     /** Uses the selected clip's transition on every cut. */

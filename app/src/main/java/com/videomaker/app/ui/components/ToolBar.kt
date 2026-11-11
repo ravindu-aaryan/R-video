@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.PhotoFilter
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Style
 import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
@@ -74,6 +75,7 @@ fun ProjectToolBar(
 ) {
     ToolRow(modifier) {
         ToolButton(Icons.Filled.AddPhotoAlternate, stringResource(R.string.tool_add), false, onAddMedia)
+        ToolButton(Icons.Filled.Style, stringResource(R.string.tool_templates), activeTool == Tool.TEMPLATES, onClick = { onTool(Tool.TEMPLATES) })
         ToolButton(Icons.Filled.TextFields, stringResource(R.string.tool_text), activeTool == Tool.TEXT, onClick = { onTool(Tool.TEXT) })
         ToolButton(Icons.Filled.LibraryMusic, stringResource(R.string.tool_music), activeTool == Tool.MUSIC, onClick = { onTool(Tool.MUSIC) })
         ToolButton(Icons.Filled.Layers, stringResource(R.string.tool_overlay), activeTool == Tool.OVERLAY, onClick = { onTool(Tool.OVERLAY) })

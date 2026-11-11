@@ -54,6 +54,7 @@ import com.videomaker.app.model.MediaClip
 import com.videomaker.app.model.OutputSettings
 import com.videomaker.app.model.OverlayLayer
 import com.videomaker.app.model.PlaybackState
+import com.videomaker.app.model.Template
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.Tool
 import com.videomaker.app.model.Transitions
@@ -75,6 +76,7 @@ import com.videomaker.app.ui.components.PreviewSurface
 import com.videomaker.app.ui.components.ProjectToolBar
 import com.videomaker.app.ui.components.RotatePanel
 import com.videomaker.app.ui.components.SpeedPanel
+import com.videomaker.app.ui.components.TemplatesPanel
 import com.videomaker.app.ui.components.TextPanel
 import com.videomaker.app.ui.components.TimelineStrip
 import com.videomaker.app.ui.components.TransitionPanel
@@ -116,6 +118,7 @@ fun EditorRoute(viewModel: EditorViewModel = viewModel()) {
             onTrimToPlayhead = viewModel::trimToPlayhead,
             onApplyLookToAll = viewModel::applyLookToAll,
             onApplyTransitionToAll = viewModel::applyTransitionToAll,
+            onApplyTemplate = viewModel::applyTemplate,
             onShuffleTransitions = viewModel::shuffleTransitions,
             clipActions = ClipActions(
                 onDeselect = { viewModel.selectClip(null) },
@@ -166,6 +169,7 @@ class EditorActions(
     val onTrimToPlayhead: (setStart: Boolean) -> Unit,
     val onApplyLookToAll: () -> Unit,
     val onApplyTransitionToAll: () -> Unit,
+    val onApplyTemplate: (Template) -> Unit,
     val onShuffleTransitions: () -> Unit,
     val clipActions: ClipActions,
     val onPickOverlay: () -> Unit,
@@ -369,6 +373,7 @@ private fun ToolPanel(
                     )
                 }
                 Tool.EFFECTS -> clip?.let { EffectsPanel(it, actions.onClipUpdate) }
+                Tool.TEMPLATES -> TemplatesPanel(onApply = actions.onApplyTemplate)
                 Tool.OVERLAY -> OverlayPanel(
                     overlay = doc.overlay,
                     thumbnail = doc.overlay?.let { thumbnails[it.clip.id] },
@@ -401,6 +406,7 @@ private fun ToolPanel(
 
 private val Tool.titleRes: Int
     get() = when (this) {
+        Tool.TEMPLATES -> R.string.tool_templates
         Tool.OVERLAY -> R.string.tool_overlay
         Tool.TEXT -> R.string.tool_text
         Tool.MUSIC -> R.string.tool_music

@@ -28,6 +28,9 @@
 
     <!-- Tool bar -->
     <string name="tool_add">Add</string>
+    <string name="tool_templates">Templates</string>
+    <string name="templates_hint">One tap styles every clip: transitions, effects, colours and fades. You can undo it, or fine-tune any clip afterwards.</string>
+    <string name="apply">Apply</string>
     <string name="tool_text">Text</string>
     <string name="tool_music">Music</string>
     <string name="tool_overlay">Overlay</string>

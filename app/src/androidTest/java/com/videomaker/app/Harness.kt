@@ -173,4 +173,108 @@ object Harness {
         Log.i(TAG, "export done: ${out.name} ${out.length()} bytes")
         return out
     }
+
+    /** A plain single-colour photo. */
+    fun solid(name: String, color: Int, size: Int = 720, seconds: Float = 2f): MediaClip =
+        save(name, Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply { eraseColor(color) }, seconds)
+
+    /**
+     * A square photo with four coloured quarters (top-left red, top-right green, bottom-left blue,
+     * bottom-right yellow) and fine stripes, so every kind of effect visibly changes it.
+     */
+    fun pattern(name: String, size: Int = 720, seconds: Float = 2f): MediaClip {
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val paint = Paint()
+        val h = size / 2f
+        val f = size.toFloat()
+        paint.color = Color.RED; canvas.drawRect(0f, 0f, h, h, paint)
+        paint.color = Color.GREEN; canvas.drawRect(h, 0f, f, h, paint)
+        paint.color = Color.BLUE; canvas.drawRect(0f, h, h, f, paint)
+        paint.color = Color.YELLOW; canvas.drawRect(h, h, f, f, paint)
+        paint.color = Color.WHITE
+        var x = 0f
+        while (x < f) {
+            canvas.drawRect(x, 0f, x + 6f, f, paint)
+            x += 60f
+        }
+        return save(name, bitmap, seconds)
+    }
+
+    private fun save(name: String, bitmap: Bitmap, seconds: Float): MediaClip {
+        val file = File(context.cacheDir, "$name.png")
+        file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        return MediaClip(
+            id = Ids.next(),
+            uri = Uri.fromFile(file),
+            mimeType = "image/png",
+            type = ClipType.IMAGE,
+            name = name,
+            width = bitmap.width,
+            height = bitmap.height,
+            sourceDurationUs = 0L,
+            hasAudio = false,
+            imageDurationUs = (seconds * 1_000_000).toLong(),
+        )
+    }
+
+    /** The exported video's frame nearest to [seconds]. */
+    fun frame(file: File, seconds: Float): Bitmap {
+        val r = MediaMetadataRetriever()
+        r.setDataSource(file.absolutePath)
+        val bitmap = r.getFrameAtTime((seconds * 1_000_000).toLong(), MediaMetadataRetriever.OPTION_CLOSEST)
+        r.release()
+        return checkNotNull(bitmap) { "No frame at $seconds s in ${file.name}" }
+            .copy(Bitmap.Config.ARGB_8888, false)
+    }
+
+    fun durationSeconds(file: File): Float {
+        val r = MediaMetadataRetriever()
+        r.setDataSource(file.absolutePath)
+        val ms = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)!!.toLong()
+        r.release()
+        return ms / 1000f
+    }
+
+    /**
+     * Average red, green, blue (0..255) of a region given as fractions of the frame
+     * (left, top, right, bottom).
+     */
+    fun average(bitmap: Bitmap, l: Float = 0f, t: Float = 0f, r: Float = 1f, b: Float = 1f): FloatArray {
+        val x0 = (l * bitmap.width).toInt()
+        val x1 = (r * bitmap.width).toInt().coerceAtMost(bitmap.width)
+        val y0 = (t * bitmap.height).toInt()
+        val y1 = (b * bitmap.height).toInt().coerceAtMost(bitmap.height)
+        var red = 0L; var green = 0L; var blue = 0L; var n = 0L
+        var y = y0
+        while (y < y1) {
+            var x = x0
+            while (x < x1) {
+                val p = bitmap.getPixel(x, y)
+                red += Color.red(p); green += Color.green(p); blue += Color.blue(p); n++
+                x += 4
+            }
+            y += 4
+        }
+        return floatArrayOf(red.toFloat() / n, green.toFloat() / n, blue.toFloat() / n)
+    }
+
+    /** Mean absolute difference per colour channel (0..255) between two same-size frames. */
+    fun difference(a: Bitmap, b: Bitmap): Float {
+        var sum = 0L; var n = 0L
+        var y = 0
+        while (y < a.height) {
+            var x = 0
+            while (x < a.width) {
+                val p = a.getPixel(x, y); val q = b.getPixel(x, y)
+                sum += kotlin.math.abs(Color.red(p) - Color.red(q)) +
+                    kotlin.math.abs(Color.green(p) - Color.green(q)) +
+                    kotlin.math.abs(Color.blue(p) - Color.blue(q))
+                n += 3
+                x += 4
+            }
+            y += 4
+        }
+        return sum.toFloat() / n
+    }
 }

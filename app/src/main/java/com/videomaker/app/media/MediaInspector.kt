@@ -10,6 +10,7 @@ import java.io.File
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import android.util.Size
 import com.videomaker.app.model.AudioLayer
 import com.videomaker.app.model.ClipType
@@ -22,7 +23,11 @@ import kotlinx.coroutines.withContext
 class MediaInspector(private val context: Context) {
 
     suspend fun inspectVisual(uri: Uri): MediaClip? = withContext(Dispatchers.IO) {
-        val mimeType = context.contentResolver.getType(uri) ?: return@withContext null
+        val mimeType = context.contentResolver.getType(uri)
+            ?: MimeTypeMap.getSingleton().getMimeTypeFromExtension(
+                MimeTypeMap.getFileExtensionFromUrl(uri.toString()).lowercase(),
+            )
+            ?: return@withContext null
         val name = displayName(uri)
         when {
             mimeType.startsWith("image/") -> inspectImage(uri, name)

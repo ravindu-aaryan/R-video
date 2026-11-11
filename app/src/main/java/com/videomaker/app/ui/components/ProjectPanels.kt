@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -55,12 +56,52 @@ import com.videomaker.app.model.ClipType
 import com.videomaker.app.model.OutputSettings
 import com.videomaker.app.model.OverlayLayer
 import com.videomaker.app.model.Resolution
+import com.videomaker.app.model.Template
 import com.videomaker.app.model.TextAnimation
 import com.videomaker.app.model.TextItem
 import com.videomaker.app.model.TextStyle
 import com.videomaker.app.model.Transitions
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+
+// ---- Templates ---------------------------------------------------------------------------------
+
+@Composable
+fun TemplatesPanel(onApply: (Template) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            stringResource(R.string.templates_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Template.entries.forEach { template ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(role = Role.Button) { onApply(template) }
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(template.label, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        template.description,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Text(
+                    stringResource(R.string.apply),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
+        }
+    }
+}
 
 // ---- Overlay ---------------------------------------------------------------------------------------
 

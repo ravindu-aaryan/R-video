@@ -278,7 +278,7 @@ sealed interface ExportState {
 /** Tools shown in the bottom bar. */
 enum class Tool {
     // Project tools (no clip selected)
-    OVERLAY, TEXT, MUSIC, TRANSITIONS, FORMAT,
+    TEMPLATES, OVERLAY, TEXT, MUSIC, TRANSITIONS, FORMAT,
     // Clip tools
     TRIM, SPEED, VOLUME, FILTERS, ADJUST, ROTATE, FIT, TRANSITION, EFFECTS,
 }

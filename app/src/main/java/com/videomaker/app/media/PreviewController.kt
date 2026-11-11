@@ -30,11 +30,14 @@ class PreviewController(private val context: Context) {
     private var current: CompositionPlayer? = null
     var onError: ((String) -> Unit)? = null
 
-    val positionUs: Long get() = (current?.currentPosition ?: 0L) * 1000
+    /** Remembered so the playhead still works while no player exists (e.g. after a preview error). */
+    private var lastSeekUs = 0L
+
+    val positionUs: Long get() = current?.let { it.currentPosition * 1000 } ?: lastSeekUs
     val isPlaying: Boolean get() = current?.isPlaying == true
 
     fun show(composition: Composition, durationUs: Long) {
-        val keepPositionMs = ((current?.currentPosition ?: 0L))
+        val keepPositionMs = ((current?.currentPosition ?: (lastSeekUs / 1000)))
             .coerceIn(0L, (durationUs / 1000 - 100).coerceAtLeast(0L))
         val keepPlaying = current?.playWhenReady == true
         releasePlayer()
@@ -79,6 +82,7 @@ class PreviewController(private val context: Context) {
     }
 
     fun seekTo(positionUs: Long) {
+        lastSeekUs = positionUs.coerceAtLeast(0L)
         current?.seekTo((positionUs / 1000).coerceAtLeast(0L))
     }
 
